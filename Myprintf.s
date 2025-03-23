@@ -5,11 +5,13 @@ global _start                  ; predefined entry point name for ld
 _start:
     lea rsi, FormatParam        ;format string
     lea rdi, Buffer             ;in rdi - buffer
+    lea rax, Arg_str
+
+    push 12
+    push 10000000
     push 12
     push 12
-    push 12
-    push 12
-    push 1000
+    push rax
     push rsi                    ;format string in stack
 
     jmp MyPrintf
@@ -23,6 +25,9 @@ RepPrintf:
 
     cmp byte [rsi], "$"          ;$ - symbol end of format
     je PrintBuff
+
+    cmp byte [rsi], "\"
+    je BackSlash
 
     movsb                           ;copy string from format arg to buff
 
@@ -59,8 +64,6 @@ PercentD:
     pop rax                 ;get num
     mov rbx, 10d            ;number system
     jmp ConvertNum
-
-    jmp RepPrintf
 ;------------------------------------------------------
 PercentO:
     pop rax                 ;get num
@@ -68,6 +71,35 @@ PercentO:
     jmp ConvertNum
 ;-----------------------------------------------------
 PercentS:
+    pop rax                 ;addr of str
+    push rsi                ;save format str
+    xor rsi, rsi
+    mov rsi, rax            ;addr str in rsi
+
+    xor rdx, rdx
+    xor rcx, rcx
+
+    push rsi                ;save addr
+
+    Symbol:
+    xor rdx, rdx
+    mov dl, [rsi]
+    inc rsi
+    inc rcx                 ;count symbols
+    cmp dl, 0               ;check on \0
+    jne Symbol
+
+    dec rcx
+
+    pop rsi                 ;restore addr str
+
+    CopyStr:
+    movsb
+    loop CopyStr
+
+    pop rsi
+
+    jmp RepPrintf
 ;-----------------------------------------------------
 PercentX:
     pop rax                 ;get num
@@ -75,6 +107,10 @@ PercentX:
     jmp ConvertNum
 ;-----------------------------------------------------
 PercentPercent:
+    inc rsi
+    mov byte[rdi], "%"
+    inc rdi
+    jmp RepPrintf
 ;-----------------------------------------------------
 error:
     mov rax, 0x01
@@ -128,6 +164,19 @@ ConvertNum:               ;Entry: rax - num, rbx - number system
     pop rsi                 ;restore format string
     jmp RepPrintf       ;ret
 ;--------------------------------------------------
+BackSlash:
+    inc rsi
+    xor rax, rax
+    mov byte al, [rsi]              ;get arg slash
+
+    cmp al, "n"
+    mov byte [rdi], 0x0a            ;\n
+
+    inc rdi
+    inc rsi
+
+    jmp RepPrintf
+;--------------------------------------------------
 PrintBuff:
     mov rax, 0x01           ;0x01 - fn to write str in console
     mov rdi, 1
@@ -136,11 +185,12 @@ PrintBuff:
     syscall
 
     jmp EOP
+;--------------------------------------------------
 EOP:
     mov rax, 0x3C      ; exit64 (rdi)
     xor rdi, rdi
     syscall
-
+;--------------------------------------------------
 section     .data
 JumpTable:
     dq 37 dup(error)
@@ -157,11 +207,12 @@ JumpTable:
     dq PercentX
     dq 135 dup(error)
 
-NumberBuff   db 32 dup(0)
+Arg_str       db "real champion", 0x00
+NumberBuff    db 32 dup(0)
 NumberBuffLen db $ - NumberBuff
-ErrorMessage db "non specific type", 0x0a
-ErrorLen     equ $ - ErrorMessage
-FormatParam  dw "%x bin: %b oct: %o dec: %d hex: %x$"
-Buffer:      db 60 dup(0), 0x0a
-BufferLen    equ $ - Buffer
+ErrorMessage  db "non specific type", 0x0a
+ErrorLen      equ $ - ErrorMessage
+FormatParam   dw "%s\n %%n\nbin - %b\noct - %o\ndec - %d\nhex - %x\n$"
+Buffer:       db 100 dup(0)
+BufferLen     equ $ - Buffer
 
