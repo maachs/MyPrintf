@@ -1,0 +1,6 @@
+radare2-5.9.8/.github/labeler.yml
+*.ini
+*.md
+*.yml
+/radare2-5.9.8/binr/blob
+/radare2-5.9.8
