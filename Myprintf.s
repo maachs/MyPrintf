@@ -5,8 +5,11 @@ global _start                  ; predefined entry point name for ld
 _start:
     lea rsi, FormatParam        ;format string
     lea rdi, Buffer             ;in rdi - buffer
-    push "12"
-
+    push 12
+    push 12
+    push 12
+    push 12
+    push 1000
     push rsi                    ;format string in stack
 
     jmp MyPrintf
@@ -28,9 +31,6 @@ RepPrintf:
     End_PrintBuff:
 ;---------------------------------------------------
 CheckParamOfPercent:
-    ;inc rdi
-    ;movsb                   ;from rsi(arg of %) to rdi
-    ;mov rax, rdi            ;in rax %(-)
     inc rsi
     xor rax, rax
     mov al, [rsi]
@@ -44,30 +44,38 @@ CheckParamOfPercent:
 PercentB:
     pop rax                 ;get num
     mov rbx, 2d             ;numer system
+    jmp ConvertNum
 
     jmp RepPrintf
 ;----------------------------------------------------
 PercentC:
-    pop rax                 ;param of printf
-    mov [rdi], al
-    ;movsb               ;[rdi] = [rsi] copy on symbol from rsi to rdi
+    pop rax                 ;get char
+    mov [rdi], al              ; copy on symbol from Format str to buff
     inc rdi
 
     jmp RepPrintf
 ;----------------------------------------------------
 PercentD:
-    pop rax                 ;
+    pop rax                 ;get num
     mov rbx, 10d            ;number system
-    jmp ConvertToDec
-    EndConvertDec:
-    inc rdi
+    jmp ConvertNum
 
     jmp RepPrintf
 ;------------------------------------------------------
 PercentO:
+    pop rax                 ;get num
+    mov rbx, 8d             ;number system
+    jmp ConvertNum
+;-----------------------------------------------------
 PercentS:
+;-----------------------------------------------------
 PercentX:
+    pop rax                 ;get num
+    mov rbx, 16d             ;number system
+    jmp ConvertNum
+;-----------------------------------------------------
 PercentPercent:
+;-----------------------------------------------------
 error:
     mov rax, 0x01
     mov rdi, 1
@@ -76,7 +84,7 @@ error:
     syscall
     jmp EOP
 ;--------------------------------------------------
-ConvertToDec:               ;Entry: rax - num, rbx - number system
+ConvertNum:               ;Entry: rax - num, rbx - number system
     xor rdx, rdx
     xor rcx, rcx
 
@@ -86,30 +94,22 @@ ConvertToDec:               ;Entry: rax - num, rbx - number system
 
     ReverseNum:
     xor rdx, rdx
-    ;mov rbx, 10d            ;in rbx - number system
     div rbx                 ;rax - quotient, rdx - remainder
 
+    cmp rbx, 16d            ;check on hex
+    jne Continue
+
+    cmp rdx, 9d
+    jle Not_Letter
+
+    add rdx, 7d             ;because "9" to "a"
+
+    Not_Letter:
+
+    Continue:
     add rdx, "0"                ;get ascii
     mov byte [rsi], dl           ;reminder in NumberBuff
     inc rsi
-
-    ;push rax
-    ;push rdi
-    ;push rsi
-    ;push rdx
-    ;push rcx
-
-    ;mov rax, 0x01
-    ;mov rdi, 1
-    ;mov rsi, NumberBuff
-    ;mov rdx, 2
-    ;syscall
-
-    ;pop rcx
-    ;pop rdx
-    ;pop rsi
-    ;pop rdi
-    ;pop rax
 
     inc rcx                 ;count len of number
 
@@ -118,28 +118,17 @@ ConvertToDec:               ;Entry: rax - num, rbx - number system
 
     xor rdx, rdx
 
-    NextDigit:                  ;
+    NextDigit:                  ;copy num from NumBuffer to Buffer
     dec rsi
     movsb                       ;[rdi] = [rsi], rdi++
     dec rsi
-    ;mov byte dl, [rsi]
-    ;mov byte [rdi], dl
-    ;mov [rdi], [rsi]           ;from NumberBuff to Buffer
-
-    ;inc rdi                 ;step one to next digit
-    ;dec rsi
 
     loop NextDigit
     inc rdi                 ;step ine in buffer
     pop rsi                 ;restore format string
-    jmp EndConvertDec       ;ret
+    jmp RepPrintf       ;ret
 ;--------------------------------------------------
 PrintBuff:
-    ;lea rbx, Buffer
-    ;sub rdi, rbx            ;find len of buff
-    ;inc rdi
-    ;inc rdi
-
     mov rax, 0x01           ;0x01 - fn to write str in console
     mov rdi, 1
     mov rsi, Buffer
@@ -172,7 +161,7 @@ NumberBuff   db 32 dup(0)
 NumberBuffLen db $ - NumberBuff
 ErrorMessage db "non specific type", 0x0a
 ErrorLen     equ $ - ErrorMessage
-FormatParam  dw "%b$"
-Buffer:      db 40 dup(0), 0x0a
+FormatParam  dw "%x bin: %b oct: %o dec: %d hex: %x$"
+Buffer:      db 60 dup(0), 0x0a
 BufferLen    equ $ - Buffer
 

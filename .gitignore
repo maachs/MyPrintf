@@ -4,3 +4,7 @@ radare2-5.9.8/.github/labeler.yml
 *.yml
 /radare2-5.9.8/binr/blob
 /radare2-5.9.8
+1-nasm
+*.lst
+*.o
+1-nasm.s
