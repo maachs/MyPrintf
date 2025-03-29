@@ -1,7 +1,16 @@
-all: my_printf
+all: old & c
 
-my_printf: MyPrintf.o
-	ld -s -o MyPrintf MyPrintf.o
+c: main.o MyPrintf.o
+	g++ main.o MyPrintf.o -o MyPrintf -no-pie
 
-MyPrintf.o: MyPrintf.s
-	nasm -f elf64 -l MyPrintf.lst MyPrintf.s
+MyPrintf.o: Myprintf.s
+	nasm -f elf64 -o MyPrintf.o Myprintf.s
+
+main.o: main.cpp
+	g++ -c main.cpp -o main.o
+
+old: old.o
+	ld -s -o old old.o
+
+old.o: old.s
+	nasm -f elf64 -l old.lst old.s
